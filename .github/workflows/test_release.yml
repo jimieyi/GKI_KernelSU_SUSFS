@@ -42,7 +42,7 @@ on:
         - Stable(标准)
         - Dev(开发)
         - Other(其他/指定)
-        default: Dev(开发)
+        default: Stable(标准)
       version:
         description: 'Custom version name (e.g., characters after 5.10.198 / leave blank to use default version number)'
         required: false
@@ -345,7 +345,7 @@ jobs:
             git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git suki-tmp
             cd suki-tmp
             KSU_GIT_VERSION=$(git rev-list --count HEAD)
-            KSU_VERSION=$((10000 + KSU_GIT_VERSION + 606))
+            KSU_VERSION=$((10000 + KSU_GIT_VERSION + 700))
             echo "SukiSU version: $KSU_VERSION"
             cd ..
             rm -rf suki-tmp
