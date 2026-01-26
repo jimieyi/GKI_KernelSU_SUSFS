@@ -47,6 +47,7 @@ jobs:
               inputs.variant == 'TheWildJamesTest' && '["TheWildJamesTest"]' ||
               inputs.variant == 'MarionKernel' && '["MarionKernel"]' ||
               inputs.variant == 'Hakan' && '["Hakan"]' ||
+              inputs.variant == 'POCO' && '["POCO"]' ||
               (inputs.build_bypass && '["Normal","Bypass"]' || '["Normal"]')
             )
           }}
@@ -575,6 +576,14 @@ jobs:
         echo "Contents of ${{ env.DEFCONFIG }}:"
         cat "${{ env.DEFCONFIG }}"
 
+    - name: Configure Kernel Options
+      working-directory: ${{ env.KERNEL_ROOT }}
+      run: |
+        cat >> "${{ env.DEFCONFIG }}" << 'EOF'
+        # KernelSU Configuration
+        # CONFIG_MODULE_SIG_PROTECT is not set
+        EOF
+        
     - name: Configure Audio Modules
       if: inputs.variant == 'Hakan'
       working-directory: ${{ env.KERNEL_ROOT }}

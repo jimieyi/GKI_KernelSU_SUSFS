@@ -43,6 +43,11 @@ jobs:
           sub_level: "128"
           os_patch_level: "2025-03"
           variant: "Hakan"
+        - android_version: "android14"
+          kernel_version: "6.1"
+          ub_level: "68"
+          os_patch_level: "2024-03"
+          variant: "POCO"
 
     uses: ./.github/workflows/build.yml
     secrets: inherit
