@@ -511,6 +511,10 @@ jobs:
         CONFIG_KSU=y
         CONFIG_KSU_SUSFS=y
 
+        # KPatch Next Support
+        CONFIG_KALLSYMS=y
+        CONFIG_KALLSYMS_ALL=y
+
         # Mountify Support
         CONFIG_TMPFS_XATTR=y
         CONFIG_TMPFS_POSIX_ACL=y
@@ -551,7 +555,7 @@ jobs:
         EOF
 
         echo "Checking if configs were applied..."
-        if grep -q "CONFIG_KSU=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KSU_SUSFS=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KPROBES=y" "${{ env.DEFCONFIG }}"; then
+        if grep -q "CONFIG_KSU=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KSU_SUSFS=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KPROBES=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KALLSYMS=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KALLSYMS_ALL=y" "${{ env.DEFCONFIG }}"; then
           echo "SUCCESS: KSU, SUSFS, and KPROBES configs verified in ${{ env.DEFCONFIG }}"
         else
           echo "FAILED: KSU, SUSFS, or KPROBES configs missing in ${{ env.DEFCONFIG }}"
