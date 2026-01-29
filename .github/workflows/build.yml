@@ -47,7 +47,7 @@ jobs:
               inputs.variant == 'TheWildJamesTest' && '["TheWildJamesTest"]' ||
               inputs.variant == 'MarionKernel' && '["MarionKernel"]' ||
               inputs.variant == 'Hakan' && '["Hakan"]' ||
-              inputs.variant == 'POCO' && '["POCO"]' ||
+              inputs.variant == 'Duchamp' && '["Duchamp"]' ||
               (inputs.build_bypass && '["Normal","Bypass"]' || '["Normal"]')
             )
           }}
@@ -127,6 +127,13 @@ jobs:
         fi
 
         repo --trace sync -c -j$(nproc --all) --fail-fast --no-tags --force-sync --no-clone-bundle
+
+    - name: Configure Kernel Options
+      if: inputs.variant == 'Duchamp'
+      working-directory: ${{ env.KERNEL_ROOT }}
+      run: |
+        rm -rf common
+        git clone --depth=1 --single-branch --branch lineage-23.0 https://github.com/mt6897-devs/android_kernel_6.1.git ./common
 
     - name: Extract Sublevel and Set File Name
       run: |
@@ -576,14 +583,6 @@ jobs:
         echo "Contents of ${{ env.DEFCONFIG }}:"
         cat "${{ env.DEFCONFIG }}"
 
-    - name: Configure Kernel Options
-      working-directory: ${{ env.KERNEL_ROOT }}
-      run: |
-        cat >> "${{ env.DEFCONFIG }}" << 'EOF'
-        # KernelSU Configuration
-        # CONFIG_MODULE_SIG_PROTECT is not set
-        EOF
-        
     - name: Configure Audio Modules
       if: inputs.variant == 'Hakan'
       working-directory: ${{ env.KERNEL_ROOT }}

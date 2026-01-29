@@ -47,7 +47,7 @@ jobs:
           kernel_version: "6.1"
           ub_level: "68"
           os_patch_level: "2024-03"
-          variant: "POCO"
+          variant: "Duchamp"
 
     uses: ./.github/workflows/build.yml
     secrets: inherit
