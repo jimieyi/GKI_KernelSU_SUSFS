@@ -45,7 +45,7 @@ jobs:
           variant: "Hakan"
         - android_version: "android14"
           kernel_version: "6.1"
-          ub_level: "68"
+          sub_level: "68"
           os_patch_level: "2024-03"
           variant: "Duchamp"
 
