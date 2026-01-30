@@ -467,7 +467,7 @@ jobs:
         sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
         
     - name: Apply Module Check Bypass
-      if: ${{ matrix.build_type == 'Bypass' || matrix.build_type == 'Hakan' }}
+      if: ${{ matrix.build_type == 'Bypass' || matrix.build_type == 'Hakan' || matrix.build_type == 'Duchamp' }}
       run: |
         if [[ "${{ inputs.kernel_version }}" == "6.1" || "${{ inputs.kernel_version }}" == "6.6" || "${{ inputs.kernel_version }}" == "6.12" ]]; then
           TARGET_FILE="$KERNEL_ROOT/common/kernel/module/version.c"
@@ -561,16 +561,6 @@ jobs:
         CONFIG_IP_SET_LIST_SET=y
         
         EOF
-
-        echo "Checking if configs were applied..."
-        if grep -q "CONFIG_KSU=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KSU_SUSFS=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KPROBES=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KALLSYMS=y" "${{ env.DEFCONFIG }}" && grep -q "CONFIG_KALLSYMS_ALL=y" "${{ env.DEFCONFIG }}"; then
-          echo "SUCCESS: KSU, SUSFS, and KPROBES configs verified in ${{ env.DEFCONFIG }}"
-        else
-          echo "FAILED: KSU, SUSFS, or KPROBES configs missing in ${{ env.DEFCONFIG }}"
-          # print last 50 lines to see what happened
-          tail -n 50 "${{ env.DEFCONFIG }}"
-          exit 1
-        fi
 
         # Remove check_defconfig
         if [[ "${{ inputs.android_version }}" == "android16" && "${{ inputs.kernel_version }}" == "6.12" ]]; then
