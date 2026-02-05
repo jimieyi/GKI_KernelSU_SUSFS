@@ -93,6 +93,7 @@ jobs:
 
         cat >> $GITHUB_ENV << EOF
         DEFCONFIG=$KERNEL_ROOT/common/arch/arm64/configs/gki_defconfig
+        DEFCONFIG_FRAGMENT=$KERNEL_ROOT/common/arch/arm64/configs/wild_gki.fragment
         CONFIG=$CONFIG
         KERNEL_ROOT=$KERNEL_ROOT
         SUSFS4KSU=$GITHUB_WORKSPACE/susfs4ksu
@@ -463,7 +464,7 @@ jobs:
       working-directory: ${{ env.KERNEL_ROOT }}
       run: |
         curl -LSs https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
-        echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
+        echo "CONFIG_BBG=y" >> "${{ env.DEFCONFIG_FRAGMENT }}"
         sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
         
     - name: Apply Module Check Bypass
@@ -514,7 +515,7 @@ jobs:
     - name: Configure Kernel Options
       working-directory: ${{ env.KERNEL_ROOT }}
       run: |
-        cat >> "${{ env.DEFCONFIG }}" << 'EOF'
+        cat >> "${{ env.DEFCONFIG_FRAGMENT }}" << 'EOF'
         # KernelSU Configuration
         CONFIG_KSU=y
         CONFIG_KSU_SUSFS=y
@@ -562,22 +563,14 @@ jobs:
         
         EOF
 
-        # Remove check_defconfig
-        if [[ "${{ inputs.android_version }}" == "android16" && "${{ inputs.kernel_version }}" == "6.12" ]]; then
-          sed -i '/name = "kernel_aarch64",/a\    check_defconfig = "disabled",' common/BUILD.bazel
-          awk '/name = "kernel_aarch64"/,/^\)/ {if(/check_defconfig = "disabled"/) found=1} END{if(found) print "SUCCESS: check_defconfig = \"disabled\" is in the kernel_aarch64 block"; else print "FAILED: NOT in the kernel_aarch64 block"}' common/BUILD.bazel
-        else
-          sed -i 's/check_defconfig//' ./common/build.config.gki
-        fi
-
-        echo "Contents of ${{ env.DEFCONFIG }}:"
-        cat "${{ env.DEFCONFIG }}"
+        echo "Contents of ${{ env.DEFCONFIG_FRAGMENT }}:"
+        cat "${{ env.DEFCONFIG_FRAGMENT }}"
 
     - name: Configure Audio Modules
       if: inputs.variant == 'Hakan'
       working-directory: ${{ env.KERNEL_ROOT }}
       run: |
-        cat >> "${{ env.DEFCONFIG }}" << 'EOF'
+        cat >> "${{ env.DEFCONFIG_FRAGMENT }}" << 'EOF'
         CONFIG_RFKILL=y
         CONFIG_CFG80211=y
         CONFIG_MAC80211=y
@@ -592,7 +585,7 @@ jobs:
       if: inputs.variant == 'vTomsonek'
       working-directory: ${{ env.KERNEL_ROOT }}
       run: |
-        cat >> "${{ env.DEFCONFIG }}" << 'EOF'
+        cat >> "${{ env.DEFCONFIG_FRAGMENT }}" << 'EOF'
         # Sound Configuration
         CONFIG_SND=y
         CONFIG_SND_DRIVERS=y
@@ -728,6 +721,7 @@ jobs:
         else
           perl -i -0777 -pe 's/(.*)echo "\$\{KERNELVERSION\}\$\{file_localversion\}\$\{config_localversion\}\$\{LOCALVERSION\}\$\{scm_version\}"/$1echo "\${KERNELVERSION}\${file_localversion}\${config_localversion}\${LOCALVERSION}-Wild\${scm_version}"/s' ./common/scripts/setlocalversion
         fi
+        export KBUILD_BUILD_TIMESTAMP="$(date -u '+%a %b %e %H:%M:%S UTC %Y')"
         if [ -f "build/build.sh" ]; then
           #Remove Dirty Flag
           sed -i 's/-dirty//' ./common/scripts/setlocalversion
@@ -751,12 +745,12 @@ jobs:
       run: |
         set -ex
         if [ -f "build/build.sh" ]; then
-          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh || exit 1
+          GKI_DEFCONFIG_FRAGMENT="${{ env.DEFCONFIG_FRAGMENT }}" LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh || exit 1
         else
           if [[ "${{ inputs.android_version }}" == "android14" ]]; then
-            tools/bazel build --config=fast --lto=thin //common:kernel_aarch64_dist || exit 1
+            tools/bazel build --config=fast --lto=thin --defconfig_fragment=//common:arch/arm64/configs/wild_gki.fragment //common:kernel_aarch64_dist || exit 1
           else
-            tools/bazel build --config=fast --lto=none //common:kernel_aarch64_dist || exit 1
+            tools/bazel build --config=fast --lto=none --defconfig_fragment=//common:arch/arm64/configs/wild_gki.fragment //common:kernel_aarch64_dist || exit 1
           fi
         fi
 
