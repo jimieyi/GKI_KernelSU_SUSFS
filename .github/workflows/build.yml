@@ -486,7 +486,18 @@ jobs:
         curl -LSs https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
         echo "CONFIG_BBG=y" >> "${{ env.DEFCONFIG_FRAGMENT }}"
         sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
-        
+
+    - name: Verify BBG Kconfig update
+      if: true
+      working-directory: ${{ env.KERNEL_ROOT }}
+      run: |
+        if grep -q "baseband_guard" common/security/Kconfig; then
+          echo "SUCCESS: baseband_guard found in common/security/Kconfig"
+          grep -n "baseband_guard" common/security/Kconfig || true
+        else
+          echo "FAILED: baseband_guard not found in common/security/Kconfig"
+          exit 1
+        fi
     - name: Apply Module Check Bypass
       if: ${{ matrix.build_type == 'Bypass' || matrix.build_type == 'Hakan' || matrix.build_type == 'Duchamp' }}
       run: |
