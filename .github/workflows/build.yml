@@ -89,10 +89,18 @@ jobs:
     - name: Install System Dependencies
       run: |
         set -e
-        if ! command -v ld >/dev/null 2>&1; then
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends binutils
+        sudo apt-get update
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          binutils \
+          binutils-x86-64-linux-gnu \
+          lld
+
+        if ! command -v ld >/dev/null 2>&1 && command -v x86_64-linux-gnu-ld >/dev/null 2>&1; then
+          sudo ln -sf "$(command -v x86_64-linux-gnu-ld)" /usr/bin/ld
         fi
+
+        command -v ld
+        ld --version | head -n 1
 
     - name: Setup Build Environment
       run: |
