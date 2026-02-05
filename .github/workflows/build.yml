@@ -86,6 +86,14 @@ jobs:
         rmz_version: "3.1.1"  # Required when rm_cmd is 'rmz'
         testing: false
 
+    - name: Install System Dependencies
+      run: |
+        set -e
+        if ! command -v ld >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends binutils
+        fi
+
     - name: Setup Build Environment
       run: |
         CONFIG="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}"
