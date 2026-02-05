@@ -48,6 +48,11 @@ jobs:
           sub_level: "68"
           os_patch_level: "2024-03"
           variant: "Duchamp"
+        - android_version: "android12"
+          kernel_version: "5.10"
+          sub_level: "226"
+          os_patch_level: "2024-11"
+          variant: "Neyugn"
 
     uses: ./.github/workflows/build.yml
     secrets: inherit
