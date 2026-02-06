@@ -768,6 +768,15 @@ jobs:
         git add .
         git commit -m "Wild: Clean Dirty Flag"
 
+    - name: Pre-build Clean (mrproper)
+      if: ${{ inputs.kernel_version == '5.10' }}
+      working-directory: ${{ env.KERNEL_ROOT }}
+      run: |
+        set -ex
+        if [ -f "common/Makefile" ]; then
+          make -C common mrproper
+        fi
+
     - name: Build Kernel
       working-directory: ${{ env.KERNEL_ROOT }}
       run: |
