@@ -308,7 +308,7 @@ jobs:
       if: true
       working-directory: ${{ env.KERNEL_ROOT }}
       run: |
-        curl -LSs https://github.com/WildKernels/Baseband-guard/raw/main/setup.sh | bash
+        curl -LSs https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
         echo "CONFIG_BBG=y" >> "${{ env.DEFCONFIG_FRAGMENT }}"
         sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
         if grep -q "baseband_guard" common/security/Kconfig; then
