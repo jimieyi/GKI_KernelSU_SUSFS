@@ -335,123 +335,6 @@ jobs:
               fi
             fi
             ;;
-          Next)
-            SUSFS_VERSION="2.0.0"
-            cd "$KERNEL_ROOT/KernelSU-Next"
-            echo "patching kernel"
-            cp $SUSFS4KSU/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-            patch -p1 < 10_enable_susfs_for_ksu.patch || true
-            echo "patching susfs fix patches"
-            cp "$KERNEL_PATCHES/next/susfs_fix_patches/v${SUSFS_VERSION}/"*.patch ./
-            echo "fixing Makefile/kbuild"
-            patch -p1 < fix_Makefile.patch
-            echo "fixing allowlist.c"
-            patch -p1 < fix_allowlist.c.patch
-            echo "fixing apk_sign.c"
-            patch -p1 < fix_apk_sign.c.patch
-            echo "fixing kernel_umount.c"
-            patch -p1 < fix_kernel_umount.c.patch
-            echo "fixing ksu.c"
-            patch -p1 < fix_ksu.c.patch
-            echo "fixing ksud.c"
-            patch -p1 < fix_ksud.c.patch
-            echo "fixing selinux.c"
-            patch -p1 < fix_selinux.c.patch
-            echo "fixing setuid_hook.c"
-            patch -p1 < fix_setuid_hook.c.patch
-            echo "fixing sucompat.c"
-            patch -p1 < fix_sucompat.c.patch
-            echo "fixing supercalls.c"
-            patch -p1 < fix_supercalls.c.patch
-            echo "overwriting hook mode"
-            patch -p1 < overwrite_hook_mode.patch
-            echo "patching ksu_toolkit"
-            patch -p1 < ksu_toolkit.patch
-            
-            cd "$KERNEL_ROOT/common"
-            cp "$SUSFS4KSU/kernel_patches/fs/"* "$KERNEL_ROOT/common/fs/"
-            cp "$SUSFS4KSU/kernel_patches/include/linux/"* "$KERNEL_ROOT/common/include/linux/"
-            cp $SUSFS4KSU/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./
-            patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-
-            if [[ "${{ inputs.android_version }}" == "android12" && "${{ inputs.kernel_version }}" == "5.10" ]]; then
-              if [[ "$ACTUAL_SUBLEVEL" -le 209 ]]; then
-                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              fi 
-              if [[ "$ACTUAL_SUBLEVEL" -le 117 ]]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/fdinfo.c.patch ./
-                patch -p1 < fdinfo.c.patch
-              fi
-              if [[ "$ACTUAL_SUBLEVEL" -le 43 ]]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a12-5.10/base.c.patch ./
-                patch -p1 < base.c.patch
-              fi
-            fi
-
-            if [[ "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.10" ]]; then
-              if [[ "$ACTUAL_SUBLEVEL" -le 107 ]]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a13-5.10/fdinfo.c.patch ./
-                patch -p1 < fdinfo.c.patch
-              fi
-              if [[ "$ACTUAL_SUBLEVEL" -le 209 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
-                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              fi
-            fi
-
-            if [[ "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
-              if [ "$ACTUAL_SUBLEVEL" -le 41 ]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a13-5.15/namespace.c.patch ./
-                patch -p1 < namespace.c.patch
-              fi
-              if [ "$ACTUAL_SUBLEVEL" -le 41 ]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a13-5.15/fdinfo.c.patch ./
-                patch -p1 < fdinfo.c.patch
-              fi
-              if [ "$ACTUAL_SUBLEVEL" -le 41 ]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a13-5.15/open.c.patch ./
-                patch -p1 < open.c.patch
-              fi
-              if [ "$ACTUAL_SUBLEVEL" -le 41 ]; then
-                sed -i 's|is_i_uid_not_allowed(i_uid_into_mnt(i_user_ns(inode), inode).val)))|is_i_uid_not_allowed(inode->i_uid.val)))|g' fs/susfs.c
-              fi
-              if [[ "$ACTUAL_SUBLEVEL" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
-                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              fi
-            fi
-
-            if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
-              if [[ "$ACTUAL_SUBLEVEL" -le 148 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
-                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              fi
-            fi
-
-            if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
-              if [[ "$ACTUAL_SUBLEVEL" -ge 145 ]]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./
-                patch -p1 < base.c.patch
-              fi
-              if [[ "$ACTUAL_SUBLEVEL" -le 75 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
-                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              fi
-            fi
-
-            if [[ "${{ inputs.android_version }}" == "android15" && "${{ inputs.kernel_version }}" == "6.6" ]]; then
-              if [[ "$ACTUAL_SUBLEVEL" -ge 98 ]]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/base.c.patch ./
-                patch -p1 < base.c.patch
-              fi
-              if [[ "$ACTUAL_SUBLEVEL" -le 58 ]]; then
-                cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/task_mmu.c.patch ./
-                patch -p1 < task_mmu.c.patch
-              fi
-            fi
-
-            if [[ "${{ inputs.android_version }}" == "android16" && "${{ inputs.kernel_version }}" == "6.12" ]]; then
-              if [[ "$ACTUAL_SUBLEVEL" -le 9999 ]]; then
-                echo "Nothing to fix!"
-              fi
-            fi
-            ;;
           KSU)
             SUSFS_VERSION="2.0.0"
             cd "$KERNEL_ROOT/KernelSU"
@@ -557,37 +440,37 @@ jobs:
         CONFIG_TMPFS_POSIX_ACL=y
         
         # Networking Configuration
-        CONFIG_IP_NF_TARGET_TTL=y
-        CONFIG_IP6_NF_TARGET_HL=y
-        CONFIG_IP6_NF_MATCH_HL=y
+        #CONFIG_IP_NF_TARGET_TTL=y
+        #CONFIG_IP6_NF_TARGET_HL=y
+        #CONFIG_IP6_NF_MATCH_HL=y
         
         # BBR TCP Congestion Control
-        CONFIG_TCP_CONG_ADVANCED=y
-        CONFIG_TCP_CONG_BBR=y
-        CONFIG_NET_SCH_FQ=y
-        # CONFIG_TCP_CONG_BIC is not set
-        # CONFIG_TCP_CONG_WESTWOOD is not set
-        # CONFIG_TCP_CONG_HTCP is not set
+        #CONFIG_TCP_CONG_ADVANCED=y
+        #CONFIG_TCP_CONG_BBR=y
+        #CONFIG_NET_SCH_FQ=y
+        ## CONFIG_TCP_CONG_BIC is not set
+        ## CONFIG_TCP_CONG_WESTWOOD is not set
+        ## CONFIG_TCP_CONG_HTCP is not set
         
         # IPSet Support
-        CONFIG_IP_SET=y
-        CONFIG_IP_SET_MAX=65534
-        CONFIG_IP_SET_BITMAP_IP=y
-        CONFIG_IP_SET_BITMAP_IPMAC=y
-        CONFIG_IP_SET_BITMAP_PORT=y
-        CONFIG_IP_SET_HASH_IP=y
-        CONFIG_IP_SET_HASH_IPMARK=y
-        CONFIG_IP_SET_HASH_IPPORT=y
-        CONFIG_IP_SET_HASH_IPPORTIP=y
-        CONFIG_IP_SET_HASH_IPPORTNET=y
-        CONFIG_IP_SET_HASH_IPMAC=y
-        CONFIG_IP_SET_HASH_MAC=y
-        CONFIG_IP_SET_HASH_NETPORTNET=y
-        CONFIG_IP_SET_HASH_NET=y
-        CONFIG_IP_SET_HASH_NETNET=y
-        CONFIG_IP_SET_HASH_NETPORT=y
-        CONFIG_IP_SET_HASH_NETIFACE=y
-        CONFIG_IP_SET_LIST_SET=y
+        #CONFIG_IP_SET=y
+        #CONFIG_IP_SET_MAX=65534
+        #CONFIG_IP_SET_BITMAP_IP=y
+        #CONFIG_IP_SET_BITMAP_IPMAC=y
+        #CONFIG_IP_SET_BITMAP_PORT=y
+        #CONFIG_IP_SET_HASH_IP=y
+        #CONFIG_IP_SET_HASH_IPMARK=y
+        #CONFIG_IP_SET_HASH_IPPORT=y
+        #CONFIG_IP_SET_HASH_IPPORTIP=y
+        #CONFIG_IP_SET_HASH_IPPORTNET=y
+        #CONFIG_IP_SET_HASH_IPMAC=y
+        #CONFIG_IP_SET_HASH_MAC=y
+        #CONFIG_IP_SET_HASH_NETPORTNET=y
+        #CONFIG_IP_SET_HASH_NET=y
+        #CONFIG_IP_SET_HASH_NETNET=y
+        #CONFIG_IP_SET_HASH_NETPORT=y
+        #CONFIG_IP_SET_HASH_NETIFACE=y
+        #CONFIG_IP_SET_LIST_SET=y
         
         EOF
 
