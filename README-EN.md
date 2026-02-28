@@ -1,7 +1,7 @@
 <div align="center">
 
 # GKI KernelSU SUSFS
-# 🏮 2026 🐎 Happy New Year! 🏮
+### 🏮 2026 🐎 Happy New Year! 🏮
 
 **Automated GKI Kernel Builds | KernelSU + SUSFS Integrated**
 
@@ -35,6 +35,15 @@ English | [**简体中文**](README.md)
 
 </td>
 </tr>
+<tr>
+<td align="center" colspan="2">
+
+**🔰 Beginner Custom Build Guide**
+
+[Fork & Custom Build Guide](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/Fork%E4%B8%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%AF%91%E6%8C%87%E5%8D%97)
+
+</td>
+</tr>
 </table>
 
 ---
@@ -43,7 +52,7 @@ English | [**简体中文**](README.md)
 
 > **Note:** OnePlus ColorOS 14/15 is currently not supported. A data wipe may be required after flashing.
 
-> Direction: We may add compatibility for a few specific popular 6.1-6.6 models in future updates. Feel free to report via Issues.
+> **ReSukiSU: ReSukiSU updates more frequently than SukiSU. If SukiSU errors occur, try ReSukiSU instead.**
 
 
 ---
@@ -53,13 +62,11 @@ English | [**简体中文**](README.md)
 For detailed instructions, please refer to the [**GitHub Wiki (bilingual CN/EN)**](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki)
 
 Wiki covers:
+- [**🔰 Beginner's Guide**](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/Fork%E4%B8%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%AF%91%E6%8C%87%E5%8D%97)
 - 📥 Download / Flash kernel
 - 💡 Tips & Tricks
 - 🆘 Brick Recovery Guide
 - 📊 Kernel Version Compatibility
-- **🔧 [Fork & Custom Build Guide](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/Fork%E4%B8%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%AF%91%E6%8C%87%E5%8D%97)** - Learn how to Fork the repo and build your own kernel
-- 🧩 Custom Build Beginner's Guide
-   - Just visit https://zzh20188.github.io/GKI_KernelSU_SUSFS/, find the parameters for the kernel you want to build, then go to Actions and select the custom build workflow to fill them in. ***A custom build timezone converter is also provided here.***
 
 ---
 
