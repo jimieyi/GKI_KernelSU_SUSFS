@@ -411,7 +411,7 @@ jobs:
             case "$branch_input" in
               "Stable(标准)")
                 case "$variant_input" in
-                  "Next") BRANCH="-s stable" ;;
+                  "Next") ;; # Next 使用硬编码分支，不需要 BRANCH
                   "SukiSU") BRANCH="-s builtin" ;;
                   "Official"|"MKSU") BRANCH="-s main" ;;
                   *) BRANCH="-" ;;
@@ -420,7 +420,7 @@ jobs:
               "Dev(开发)")
                 case "$variant_input" in
                   "Official"|"MKSU") BRANCH="-s main" ;;
-                  "Next") BRANCH="-s dev" ;;
+                  "Next") ;; # Next 使用硬编码分支，不需要 BRANCH
                   "SukiSU") BRANCH="-s builtin" ;;
                   *) echo "未知变体: $variant_input" >&2; exit 1 ;;
                 esac
