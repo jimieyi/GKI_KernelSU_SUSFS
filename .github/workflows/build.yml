@@ -726,14 +726,13 @@ jobs:
         if: inputs.use_zram
         working-directory: ${{ env.KERNEL_ROOT }}/common
         run: |
-          # 第一阶段：升级 LZ4 到 1.10.0
+          # 第一阶段：升级 LZ4 到 1.10.0 并添加 ARM64 NEON 加速
           echo "升级 LZ4..."
           rm -f lib/lz4/lz4_compress.c lib/lz4/lz4_decompress.c lib/lz4/lz4defs.h lib/lz4/lz4hc_compress.c
 
           cp -r $ZZH_PATCHES/zram/lz4/* ./lib/lz4/
           cp -r $ZZH_PATCHES/zram/include/linux/* ./include/linux/
-          cp $ZZH_PATCHES/zram/${{ inputs.kernel_version }}/lz4_1.10.0.patch ./
-          patch -p1 -F 3 --fuzz=5 < lz4_1.10.0.patch || true
+          bash $ZZH_PATCHES/zram/apply_lz4_neon.sh
 
           if [ -f "fs/f2fs/Makefile" ] && ! grep -qF "f2fs-\$(CONFIG_F2FS_IOSTAT) += iostat.o" "fs/f2fs/Makefile"; then
             echo "f2fs-\$(CONFIG_F2FS_IOSTAT) += iostat.o" >> "fs/f2fs/Makefile"
@@ -746,10 +745,14 @@ jobs:
           cp -r $SUKISU_PATCHES/other/zram/lz4k_oplus ./lib/
 
           cp $SUKISU_PATCHES/other/zram/zram_patch/${{ inputs.kernel_version }}/lz4kd.patch ./
-          patch -p1 -F 3 < lz4kd.patch || true
+          if ! patch -p1 -F 3 < lz4kd.patch; then
+            echo "::warning::lz4kd.patch 应用失败，可能已应用或上下文不匹配"
+          fi
 
           cp $SUKISU_PATCHES/other/zram/zram_patch/${{ inputs.kernel_version }}/lz4k_oplus.patch ./
-          patch -p1 -F 3 < lz4k_oplus.patch || true
+          if ! patch -p1 -F 3 < lz4k_oplus.patch; then
+            echo "::warning::lz4k_oplus.patch 应用失败，可能已应用或上下文不匹配"
+          fi
 
       # ==================== 修复 6.6 WiFi/蓝牙兼容性（三星 + 小米） ====================
       # 合并三星与小米修复，并采用幂等写法避免重复追加导致脏变更
@@ -811,16 +814,18 @@ jobs:
         run: |
           CONFIG_FILE="$DEFCONFIG"
 
+          # 5.10 需要额外基础配置
           if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
-            cat >> "$CONFIG_FILE" << 'EOF'
-          CONFIG_ZSMALLOC=y
-          CONFIG_ZRAM=y
-          CONFIG_MODULE_SIG=n
-          CONFIG_CRYPTO_LZO=y
-          CONFIG_ZRAM_DEF_COMP_LZ4KD=y
-          EOF
+            cat >> "$CONFIG_FILE" <<'EOF'
+CONFIG_ZSMALLOC=y
+CONFIG_ZRAM=y
+CONFIG_MODULE_SIG=n
+CONFIG_CRYPTO_LZO=y
+CONFIG_ZRAM_DEF_COMP_LZ4KD=y
+EOF
           fi
 
+          # 5.15 / 6.1：将模块改为内建
           if [ "${{ inputs.kernel_version }}" != "6.6" ] && [ "${{ inputs.kernel_version }}" != "5.10" ]; then
             if grep -q "CONFIG_ZSMALLOC" "$CONFIG_FILE"; then
               sed -i 's/CONFIG_ZSMALLOC=m/CONFIG_ZSMALLOC=y/g' "$CONFIG_FILE"
@@ -830,24 +835,21 @@ jobs:
             sed -i 's/CONFIG_ZRAM=m/CONFIG_ZRAM=y/g' "$CONFIG_FILE"
           fi
 
+          # 6.6：将模块改为内建
           if [ "${{ inputs.kernel_version }}" = "6.6" ]; then
             echo "CONFIG_ZSMALLOC=y" >> "$CONFIG_FILE"
             sed -i 's/CONFIG_ZRAM=m/CONFIG_ZRAM=y/g' "$CONFIG_FILE"
           fi
 
+          # android14/15：从 modules.bzl 移除 zram/zsmalloc 模块声明
           if [ "${{ inputs.android_version }}" = "android14" ] || [ "${{ inputs.android_version }}" = "android15" ]; then
             sed -i 's/"drivers\/block\/zram\/zram\.ko",//g; s/"mm\/zsmalloc\.ko",//g' "$KERNEL_ROOT/common/modules.bzl"
             echo "CONFIG_MODULE_SIG_FORCE=n" >> "$CONFIG_FILE"
           fi
 
+          # 启用压缩算法（使用独立 fragment 文件）
           if grep -q "CONFIG_ZSMALLOC=y" "$CONFIG_FILE" && grep -q "CONFIG_ZRAM=y" "$CONFIG_FILE"; then
-            cat >> "$CONFIG_FILE" << 'EOF'
-          CONFIG_CRYPTO_LZ4HC=y
-          CONFIG_CRYPTO_LZ4K=y
-          CONFIG_CRYPTO_LZ4KD=y
-          CONFIG_CRYPTO_842=y
-          CONFIG_CRYPTO_LZ4K_OPLUS=y
-          EOF
+            cat "$ZZH_PATCHES/config/zram.config" >> "$CONFIG_FILE"
           fi
 
       # ==================== 添加 BBG 防格机补丁 ====================
