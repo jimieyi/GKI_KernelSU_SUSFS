@@ -75,6 +75,15 @@ jobs:
       - name: Copy data to web directory
         run: cp -r data/ web/data/
 
+      # 构建前端资源（webpack 打包 JS/SCSS → dist/）
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build web assets
+        working-directory: web
+        run: npm ci && npx webpack --mode production
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
