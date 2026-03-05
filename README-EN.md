@@ -20,11 +20,9 @@ English | [**简体中文**](README.md)
 
 <table>
 <tr>
-<td align="center" width="50%">📖 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki">Documentation</a></b></td>
-<td align="center" width="50%">📥 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases">Downloads</a></b></td>
-</tr>
-<tr>
-<td align="center" colspan="2">🔰 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/Fork%E4%B8%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%AF%91%E6%8C%87%E5%8D%97">Beginner Custom Build Guide</a></b></td>
+<td align="center" width="33%">📖 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki">Documentation</a></b></td>
+<td align="center" width="34%">📥 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases">Downloads</a></b></td>
+<td align="center" width="33%">🔰 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki/Fork%E4%B8%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%AF%91%E6%8C%87%E5%8D%97">Beginner Custom Build Guide</a></b></td>
 </tr>
 </table>
 

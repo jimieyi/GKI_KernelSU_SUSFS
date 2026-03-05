@@ -817,12 +817,12 @@ jobs:
           # 5.10 需要额外基础配置
           if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
             cat >> "$CONFIG_FILE" <<'EOF'
-CONFIG_ZSMALLOC=y
-CONFIG_ZRAM=y
-CONFIG_MODULE_SIG=n
-CONFIG_CRYPTO_LZO=y
-CONFIG_ZRAM_DEF_COMP_LZ4KD=y
-EOF
+          CONFIG_ZSMALLOC=y
+          CONFIG_ZRAM=y
+          CONFIG_MODULE_SIG=n
+          CONFIG_CRYPTO_LZO=y
+          CONFIG_ZRAM_DEF_COMP_LZ4KD=y
+          EOF
           fi
 
           # 5.15 / 6.1：将模块改为内建
