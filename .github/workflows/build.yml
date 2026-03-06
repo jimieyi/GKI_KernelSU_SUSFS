@@ -807,6 +807,11 @@ jobs:
           # 小米：补充符号（幂等）
           ensure_line_once "$XIAOMI_SYMBOL_LIST" "device_find_any_child"
 
+      # ==================== 备份原始 defconfig ====================
+      # 用于后续生成 defconfig fragment（bazel trim 兼容）
+      - name: 备份原始 defconfig
+        run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
+
       # ==================== 配置 ZRAM 选项 ====================
       # 启用各种 ZRAM 压缩算法
       - name: 配置 ZRAM 选项
@@ -907,6 +912,7 @@ jobs:
           else
             # 配置 6.1+ 内核
             sed -i '/^[[:space:]]*"protected_exports_list"[[:space:]]*:[[:space:]]*"android\/abi_gki_protected_exports_aarch64",$/d' ./common/BUILD.bazel
+            sed -i '/kmi_symbol_list_strict_mode/d' ./common/BUILD.bazel
             rm -rf ./common/android/abi_gki_protected_exports_*
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
           fi
@@ -914,7 +920,10 @@ jobs:
           # 配置内核名称
           if [ -n "${{ inputs.version }}" ]; then
             CLEAN_VERSION=$(echo "${{ inputs.version }}" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+//')
-            sed -i '$s|echo "\$res"|echo "'"$CLEAN_VERSION"'"|' ./common/scripts/setlocalversion
+            # 6.6+：新格式 setlocalversion，保留 ${KERNELVERSION}
+            perl -i -0777 -pe 's/(.*)echo "\$\{KERNELVERSION\}\$\{file_localversion\}\$\{config_localversion\}\$\{LOCALVERSION\}\$\{scm_version\}"/$1echo "\$\{KERNELVERSION\}'"${CLEAN_VERSION}"'"/s' ./common/scripts/setlocalversion 2>/dev/null || true
+            # 旧格式（5.x/6.1）回退
+            sed -i "\$s|echo \"\$res\"|echo \"${CLEAN_VERSION}\"|" ./common/scripts/setlocalversion 2>/dev/null || true
             sed -i '/^CONFIG_LOCALVERSION=/ s/="\([^"]*\)"/="'"$CLEAN_VERSION"'"/' ./common/arch/arm64/configs/gki_defconfig
           elif [ ! -f "build/build.sh" ]; then
             cd ./common
@@ -927,14 +936,18 @@ jobs:
               "android16-6.12") KMI_TAG="android16-5" ;;
               *) KMI_TAG="${{ inputs.android_version }}" ;;
             esac
-            KMI_LOCAL="-${KMI_TAG}-g${GHASH}-${BID}-4k"
 
-            # 6.1 通过 setlocalversion 注入版本名称
             if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
+              # 6.1：通过 setlocalversion 注入版本名称（旧格式）
+              KMI_LOCAL="-${KMI_TAG}-g${GHASH}-${BID}-4k"
               sed -i "\$s|echo \"\$res\"|echo \"${KMI_LOCAL}\"|" ./scripts/setlocalversion 2>/dev/null || true
+              sed -i "/^CONFIG_LOCALVERSION=/ s/=\"[^\"]*\"/=\"${KMI_LOCAL}\"/" ./arch/arm64/configs/gki_defconfig 2>/dev/null || true
+            else
+              # 6.6+：修改 setlocalversion 注入版本名称（新格式，参考 wild_kernel）
+              # 保留 ${KERNELVERSION} 和 ${config_localversion} 由脚本运行时解析
+              SUFFIX="-${KMI_TAG}-g${GHASH}-${BID}"
+              perl -i -0777 -pe 's/(.*)echo "\$\{KERNELVERSION\}\$\{file_localversion\}\$\{config_localversion\}\$\{LOCALVERSION\}\$\{scm_version\}"/$1echo "\$\{KERNELVERSION\}'"${SUFFIX}"'\$\{config_localversion\}"/s' ./scripts/setlocalversion 2>/dev/null || true
             fi
-            # 6.6+ 通过 CONFIG_LOCALVERSION 注入版本名称
-            sed -i "/^CONFIG_LOCALVERSION=/ s/=\"[^\"]*\"/=\"${KMI_LOCAL}\"/" ./arch/arm64/configs/gki_defconfig 2>/dev/null || true
           fi
 
       # ==================== 自定义构建时间 ====================
@@ -997,7 +1010,24 @@ jobs:
               LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
             else
               # 6.1+ 内核使用 Bazel 构建
-              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast --lto=thin //common:kernel_aarch64_dist || exit 1
+              # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
+              FRAG="common/arch/arm64/configs/ksu.fragment"
+              diff "$DEFCONFIG.orig" "$DEFCONFIG" | grep '^>' | sed 's/^> //; s/^[[:space:]]*//' > "$FRAG" || true
+              cp "$DEFCONFIG.orig" "$DEFCONFIG"
+              echo "=== KSU Fragment 内容 ==="
+              cat "$FRAG"
+              echo "========================="
+              # 仅当 fragment 非空时传递参数
+              FRAG_FLAG=""
+              if [ -s "$FRAG" ]; then
+                FRAG_FLAG="--defconfig_fragment=//common:arch/arm64/configs/ksu.fragment"
+              fi
+              # 6.12+ 使用 lto=none（Rust 内核模块不兼容 thin LTO）
+              LTO_FLAG="--lto=thin"
+              if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
+                LTO_FLAG="--lto=none"
+              fi
+              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $LTO_FLAG $FRAG_FLAG //common:kernel_aarch64_dist || exit 1
               strings ./bazel-bin/common/kernel_aarch64/Image | grep 'Linux version'
             fi
 
