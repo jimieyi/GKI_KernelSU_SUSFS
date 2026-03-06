@@ -33,6 +33,10 @@ English | [**简体中文**](README.md)
 > **Note:** OnePlus ColorOS 14/15 is currently not supported. A data wipe may be required after flashing.
 
 > **ReSukiSU: ReSukiSU updates more frequently than SukiSU. If SukiSU errors occur, try ReSukiSU instead.**
+>
+> **Default variant has been switched to ReSukiSU**
+
+> **Android 16: Android 16 - 6.12 kernel version is now supported**
 
 
 ---
