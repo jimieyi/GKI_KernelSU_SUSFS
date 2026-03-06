@@ -33,6 +33,8 @@
 > **注意：** 目前不支持一加 ColorOS 14、15，刷入后可能需要清除数据开机。
 
 > **ReSukiSU：ReSukiSU更新比SukiSU勤快，SukiSU报错就试试ReSukiSU**
+>
+> **默认变体已切换为 ReSukiSU**
 
 
 ---

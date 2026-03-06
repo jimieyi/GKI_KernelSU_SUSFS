@@ -42,7 +42,7 @@ on:
           - Official
           - Next
           - MKSU
-        default: SukiSU
+        default: ReSukiSU
       kernelsu_branch:
         description: "KSU 分支"
         type: choice
