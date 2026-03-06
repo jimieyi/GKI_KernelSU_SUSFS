@@ -61,3 +61,5 @@ node_modules/
 .ace-tool/
 AGENTS.md
 web/serve.sh
+.omc/
+web/dist/

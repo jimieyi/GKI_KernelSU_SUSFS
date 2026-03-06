@@ -1,4 +1,4 @@
-name: Android 内核构建-自定义
+name: 内核构建 - Android 16 (6.12)
 
 permissions:
   contents: write
@@ -7,46 +7,6 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      # ==================== 内核版本配置 ====================
-      android_version:
-        description: "Android 版本"
-        required: true
-        type: choice
-        options:
-          - android12
-          - android13
-          - android14
-          - android15
-          - android16
-        default: android12
-      kernel_version:
-        description: "内核版本"
-        required: true
-        type: choice
-        options:
-          - "5.10"
-          - "5.15"
-          - "6.1"
-          - "6.6"
-          - "6.12"
-        default: "5.10"
-      sub_level:
-        description: "子版本号 (如 66, 198, X)"
-        required: true
-        type: string
-        default: "66"
-      os_patch_level:
-        description: "安全补丁级别 (如 2022-01, lts)"
-        required: true
-        type: string
-        default: "2022-01"
-      revision:
-        description: "修订版本 (如 r11, 仅 5.10 需要)"
-        required: false
-        type: string
-        default: "r11"
-
-      # ==================== KernelSU 配置 ====================
       kernelsu_variant:
         description: "KernelSU 变体"
         required: true
@@ -67,8 +27,6 @@ on:
           - Dev(开发)
           - Other(其他/指定)
         default: Stable(标准)
-
-      # ==================== 可选配置 ====================
       version:
         description: "自定义版本名 (可选)"
         required: false
@@ -78,8 +36,6 @@ on:
         required: false
         type: string
         default: "Sun Dec 01 08:10:00 UTC 2024"
-
-      # ==================== 功能开关 ====================
       use_zram:
         description: "启用 ZRAM 增强算法"
         required: true
@@ -105,29 +61,79 @@ on:
         required: false
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      kernelsu_variant:
+        required: true
+        type: string
+      kernelsu_branch:
+        required: true
+        type: string
+      version:
+        required: false
+        type: string
+      build_time:
+        required: false
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
+      use_zram:
+        required: true
+        type: boolean
+      use_bbg:
+        required: true
+        type: boolean
+      use_kpm:
+        required: true
+        type: boolean
+      cancel_susfs:
+        required: false
+        type: boolean
+      supp_op:
+        required: false
+        type: boolean
+      called_from_main:
+        description: "是否从 main.yml 调用（内部使用）"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  build-custom-kernel:
-    name: "${{ inputs.kernel_version }}.${{ inputs.sub_level }}-${{ inputs.android_version }}-${{ inputs.os_patch_level }}"
+  build-kernels-a16-6-12:
+    name: "6.12.${{ matrix.sub_level }}-${{ matrix.os_patch_level }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sub_level: "23"
+            os_patch_level: "2025-06"
+          - sub_level: "30"
+            os_patch_level: "2025-07"
+          - sub_level: "38"
+            os_patch_level: "2025-09"
+          - sub_level: "58"
+            os_patch_level: "2025-12"
+          - sub_level: "X"
+            os_patch_level: "lts"
     uses: ./.github/workflows/build.yml
     secrets: inherit
     with:
-      android_version: ${{ inputs.android_version }}
-      kernel_version: ${{ inputs.kernel_version }}
-      sub_level: ${{ inputs.sub_level }}
-      os_patch_level: ${{ inputs.os_patch_level }}
-      revision: ${{ inputs.revision || '' }}
+      android_version: "android16"
+      kernel_version: "6.12"
+      sub_level: ${{ matrix.sub_level }}
+      os_patch_level: ${{ matrix.os_patch_level }}
       ksu_variant: ${{ inputs.kernelsu_variant }}
       ksu_branch: ${{ inputs.kernelsu_branch }}
       version: ${{ inputs.version || '' }}
       build_time: ${{ inputs.build_time || '' }}
-      use_zram: ${{ inputs.use_zram }}
+      use_zram: false
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       supp_op: ${{ inputs.supp_op || false }}
       enable_susfs: ${{ !inputs.cancel_susfs }}
 
+  # 仅在直接触发时运行，从 main.yml 调用时跳过
   get-ksu-manager:
+    if: ${{ !inputs.called_from_main }}
     uses: ./.github/workflows/get-manager.yml
     secrets: inherit
     with:
