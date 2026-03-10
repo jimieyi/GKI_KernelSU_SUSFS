@@ -582,13 +582,14 @@ jobs:
           BBG = ${{ inputs.use_bbg && 'true' || 'false' }}
           LZ4KD = ${{ inputs.use_zram && 'true' || 'false' }}
           Built-in KPM = ${{ inputs.use_kpm && 'true' || 'false' }}
-          KPatch-Next Support = ${{ inputs.kernelsu_variant == 'Next' && 'true' || 'false' }}</pre>
+          KPatch-Next Support = true</pre>
           Change Log: 
           <pre>${INPUT_CHANGE_LOG}
           </pre>
+          
           Download: <a href="https://github.com/coolzyd9107/GKI_KernelSU_SUSFS/releases/tag/${NEW_TAG}">Click Here</a>
 
-          Note: The "commit" here is manually provided.
+          Note: The "commit" here refers to ReSukiSU's commit, not this repository's.
           EOF
           )
 
