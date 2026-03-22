@@ -62,3 +62,9 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.65; }
 }
+
+// 表格行淡入（纯 opacity，避免 transform 破坏 border-collapse）
+@keyframes rowFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

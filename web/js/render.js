@@ -179,8 +179,10 @@ function buildCard(data, meta) {
 export function animateCounters(panel) {
   panel.querySelectorAll('.stat-value').forEach(function (el) {
     var text = el.textContent.trim();
+    // 仅对纯整数值执行计数动画，跳过日期和内核版本
+    if (!/^\d+$/.test(text)) return;
     var target = parseInt(text, 10);
-    if (isNaN(target) || target <= 0) return;
+    if (target <= 0) return;
 
     var start = 0;
     var duration = 600;
@@ -189,7 +191,6 @@ export function animateCounters(panel) {
     function step(ts) {
       if (!startTime) startTime = ts;
       var progress = Math.min((ts - startTime) / duration, 1);
-      // easeOutCubic
       var ease = 1 - Math.pow(1 - progress, 3);
       el.textContent = Math.round(start + (target - start) * ease);
       if (progress < 1) requestAnimationFrame(step);
@@ -201,20 +202,25 @@ export function animateCounters(panel) {
 }
 
 // ---- 行点击涟漪效果 ----
+// 注意：<tr> 不支持 position:relative 和 overflow:hidden，
+// 因此将涟漪 span 挂载到被点击的 <td> 上
 
 export function initRipple() {
   document.addEventListener('click', function (e) {
     var row = e.target.closest('tr.row-clickable');
     if (!row) return;
 
-    var rect = row.getBoundingClientRect();
+    var td = e.target.closest('td');
+    if (!td) return;
+
+    var rect = td.getBoundingClientRect();
     var size = Math.max(rect.width, rect.height);
     var ripple = document.createElement('span');
     ripple.className = 'row-ripple';
     ripple.style.width = ripple.style.height = size + 'px';
     ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
     ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
-    row.appendChild(ripple);
+    td.appendChild(ripple);
 
     ripple.addEventListener('animationend', function () { ripple.remove(); });
   });
