@@ -1,6 +1,9 @@
 # Claude Code
 .claude/
 
+# Gemini
+.gemini/
+
 # Development files
 hympfs-dev.diff
 .gitignore
