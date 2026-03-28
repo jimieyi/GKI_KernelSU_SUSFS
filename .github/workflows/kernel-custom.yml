@@ -53,7 +53,7 @@ on:
         type: choice
         options:
           - Official
-          - Next
+          #- Next
           - MKSU
           - SukiSU
           - ReSukiSU

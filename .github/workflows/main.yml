@@ -40,7 +40,7 @@ on:
           - SukiSU
           - ReSukiSU
           - Official
-          - Next
+          #- Next
           - MKSU
         default: ReSukiSU
       kernelsu_branch:
