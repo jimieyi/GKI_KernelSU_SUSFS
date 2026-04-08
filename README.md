@@ -18,13 +18,9 @@
 
 ## 🚀 快速导航
 
-<table>
-<tr>
-<td align="center" width="33%">📖 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki">文档</a></b></td>
-<td align="center" width="34%">📥 <b><a href="https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases">下载</a></b></td>
-<td align="center" width="33%">🔰 <b><a href="https://zzh20188.github.io/GKI_KernelSU_SUSFS/guide.html">教程</a></b></td>
-</tr>
-</table>
+- 📖 [文档](https://github.com/zzh20188/GKI_KernelSU_SUSFS/wiki)
+- 📥 [下载](https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases)
+- 🔰 [教程](https://zzh20188.github.io/GKI_KernelSU_SUSFS/guide.html)
 
 ---
 
@@ -32,11 +28,7 @@
 
 > **注意：** 目前不支持一加 ColorOS 14、15，刷入后可能需要清除数据开机。
 
-> **ReSukiSU：ReSukiSU更新比SukiSU勤快，SukiSU报错就试试ReSukiSU**
->
-> **默认变体已切换为 ReSukiSU**
-
-> **Android 16：已支持 Android 16 - 6.12 内核版本**
+> **rekernel功能（测试）：已支持 rekernel 功能（目前处于测试阶段）**
 
 
 ---

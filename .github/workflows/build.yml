@@ -54,6 +54,10 @@ on:
         required: true
         type: boolean
         default: true
+      use_rekernel:
+        required: false
+        type: boolean
+        default: false
       enable_susfs:
         required: true
         type: boolean
@@ -91,6 +95,7 @@ jobs:
           echo "ZRAM 增强     : ${{ inputs.use_zram }}"
           echo "BBG 补丁      : ${{ inputs.use_bbg }}"
           echo "KPM 功能      : ${{ inputs.use_kpm }}"
+          echo "Re-Kernel     : ${{ inputs.use_rekernel }}"
           echo "Stock Config  : 自动检测 config/stock_defconfig"
           echo "========================================"
 
@@ -149,10 +154,9 @@ jobs:
           fi
 
       - name: 安装编译依赖
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: ccache python3 git curl build-essential libssl-dev bison flex libelf-dev dwarves
-          execute_install_scripts: true
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache python3 git curl build-essential libssl-dev bison flex libelf-dev dwarves
 
       - name: 配置 ccache
         run: |
@@ -163,7 +167,7 @@ jobs:
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
       - name: 恢复 ccache 缓存
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.ccache
           key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-${{ github.sha }}
@@ -172,7 +176,7 @@ jobs:
 
       - name: 缓存工具链
         id: cache-toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             kernel-build-tools
@@ -509,7 +513,16 @@ jobs:
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           echo "应用 SUSFS 补丁..."
-          SUSFS_VERSION="2.0.0"
+          # 读取 SUSFS 上游版本（例如 v2.1.0），用于匹配 wild 修复补丁目录
+          SUSFS_VERSION=$(grep -E '^#define[[:space:]]+SUSFS_VERSION' "$SUSFS4KSU/kernel_patches/include/linux/susfs.h" | awk '{print $3}' | tr -d '"' | sed 's/^v//')
+          if [ -z "$SUSFS_VERSION" ]; then
+            SUSFS_VERSION="2.0.0"
+          fi
+          if [ ! -d "$KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}" ]; then
+            echo "::warning::未找到 wild/susfs_fix_patches/v${SUSFS_VERSION}，回退 v2.0.0"
+            SUSFS_VERSION="2.0.0"
+          fi
+          echo "SUSFS 修复补丁版本: v${SUSFS_VERSION}"
 
           cp $SUSFS4KSU/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
           cp $SUSFS4KSU/kernel_patches/fs/* ./common/fs/
@@ -519,13 +532,12 @@ jobs:
             "Official"|"MKSU")
               cd ./KernelSU
               cp $SUSFS4KSU/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-
-              sed -i 's|kernel/Makefile|kernel/Kbuild|g' ./10_enable_susfs_for_ksu.patch
-              sed -i 's|^@@ .* format:.*|@@ -94,4 +94,13 @@|' ./10_enable_susfs_for_ksu.patch
-              sed -i 's|.*check-format:.*| ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat -Wno-missing-prototypes|' ./10_enable_susfs_for_ksu.patch
-              sed -i 's|.*clang-format --dry-run.*| ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-unused-variable|' ./10_enable_susfs_for_ksu.patch
-
-              patch -p1 < 10_enable_susfs_for_ksu.patch || true
+              # 兼容旧版补丁：仅当补丁仍只修改 kernel/Makefile 时，才替换为 kernel/Kbuild
+              if grep -q '^diff --git a/kernel/Makefile b/kernel/Makefile' ./10_enable_susfs_for_ksu.patch \
+                && ! grep -q '^diff --git a/kernel/Kbuild b/kernel/Kbuild' ./10_enable_susfs_for_ksu.patch; then
+                sed -i 's|kernel/Makefile|kernel/Kbuild|g' ./10_enable_susfs_for_ksu.patch
+              fi
+              patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
 
               # 仅 MKSU: 修复 SUSFS 补丁与最新 KernelSU 代码重构不兼容导致的 include 路径问题
               # MKSU 的 setup.sh clone 的是 tiann/KernelSU（新版子目录结构），
@@ -804,6 +816,66 @@ jobs:
           echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
 
+      - name: 应用 Re-Kernel
+        if: inputs.use_rekernel
+        working-directory: ${{ env.KERNEL_ROOT }}
+        run: |
+          set -e
+          echo "Integrating Re-Kernel..."
+          TMP_REKERNEL=/tmp/rekernel
+          rm -rf "$TMP_REKERNEL"
+          git clone --depth 1 https://github.com/Sakion-Team/Re-Kernel.git "$TMP_REKERNEL"
+
+          # 准备驱动源码
+          mkdir -p common/drivers/rekernel
+          cp "$TMP_REKERNEL/LKM-Source/rekernel.c" common/drivers/rekernel/
+          cp "$TMP_REKERNEL/LKM-Source/rekernel.h" common/drivers/rekernel/
+
+          # 生成构建配置
+          cat > common/drivers/rekernel/Kconfig << 'EOF'
+          menu "Re:Kernel"
+          config REKERNEL
+              bool "Re:Kernel support (GKI Vendor Hooks)"
+              default y
+              help
+                Enable Re-Kernel support via GKI Vendor Hooks.
+
+          config REKERNEL_NETWORK
+              bool "Re:Kernel NetReceive unfreeze support"
+              depends on REKERNEL
+              default n
+          endmenu
+          EOF
+
+          cat > common/drivers/rekernel/Makefile << 'EOF'
+          obj-$(CONFIG_REKERNEL) += rekernel.o
+          ccflags-$(CONFIG_REKERNEL_NETWORK) += -DNETWORK_FILTER
+          EOF
+
+          # 挂载到驱动树
+          if ! grep -qF 'source "drivers/rekernel/Kconfig"' common/drivers/Kconfig; then
+            sed -i '/^endmenu$/i source "drivers/rekernel/Kconfig"' common/drivers/Kconfig
+          fi
+          if ! grep -qF 'obj-$(CONFIG_REKERNEL) += rekernel/' common/drivers/Makefile; then
+            echo 'obj-$(CONFIG_REKERNEL) += rekernel/' >> common/drivers/Makefile
+          fi
+
+          # 启用内核版本宏
+          REKERNEL_H="common/drivers/rekernel/rekernel.h"
+          VERSION_MACRO="KERNEL_$(echo "${{ inputs.kernel_version }}" | tr '.' '_')"
+          if grep -q "^// #define ${VERSION_MACRO}$" "$REKERNEL_H"; then
+            sed -i "s|^// #define ${VERSION_MACRO}$|#define ${VERSION_MACRO}|" "$REKERNEL_H"
+          fi
+
+          # 修正头文件包含路径（适配 in-tree 编译）
+          sed -i 's|#include <../android/binder_internal.h>|#include "../../drivers/android/binder_internal.h"|g' common/drivers/rekernel/rekernel.c
+          # 补齐 binder_internal 依赖（避免 5.10 下 DEFINE_SHOW_ATTRIBUTE 报错）
+          grep -qF '#include <linux/seq_file.h>' common/drivers/rekernel/rekernel.c || sed -i '/#include <trace\/hooks\/signal.h>/a #include <linux/seq_file.h>' common/drivers/rekernel/rekernel.c
+
+          # 配置 defconfig（幂等）
+          grep -q '^CONFIG_REKERNEL=y$' "$DEFCONFIG" || echo "CONFIG_REKERNEL=y" >> "$DEFCONFIG"
+          grep -q '^CONFIG_REKERNEL_NETWORK=y$' "$DEFCONFIG" || echo "CONFIG_REKERNEL_NETWORK=y" >> "$DEFCONFIG"
+
       - name: 配置内核选项
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
@@ -880,25 +952,28 @@ jobs:
           INPUT_TIME="${{ inputs.build_time }}"
           if [[ -n "$INPUT_TIME" && "$INPUT_TIME" != "N" && "$INPUT_TIME" != "n" ]]; then
             DATESTR="$INPUT_TIME"
-            echo "使用输入的构建时间: $DATESTR"
           else
             DATESTR="$(TZ='UTC' date +'%a %b %d %T %Z %Y')"
-            echo "使用当前 UTC 时间: $DATESTR"
           fi
 
+          echo "使用构建时间: $DATESTR"
           echo "KBUILD_BUILD_TIMESTAMP=$DATESTR" >> "$GITHUB_ENV"
           echo "KBUILD_BUILD_VERSION=1" >> "$GITHUB_ENV"
 
+          # 统一处理 mkcompile_h 补丁
           f="$KERNEL_ROOT/common/scripts/mkcompile_h"
           if [ -f "$f" ]; then
-            echo "写入 mkcompile_h 构建时间: $DATESTR"
-            if grep -q 'UTS_VERSION=' "$f"; then
-              perl -pi -e "s{UTS_VERSION=\"\\\$\\\(.*?\\\)\"}{UTS_VERSION=\"#1 SMP PREEMPT $DATESTR\"}" "$f"
+            if [[ "${{ inputs.kernel_version }}" == "5.10" || "${{ inputs.kernel_version }}" == "5.15" ]]; then
+              echo "应用 5.x 经典时间戳补丁: $f"
+              perl -pi -e "s{UTS_VERSION=\"\\\$\(echo \\\$UTS_VERSION \\\$CONFIG_FLAGS \\\$TIMESTAMP \\| cut -b -\\\$UTS_LEN\)\"}{UTS_VERSION=\"#1 SMP PREEMPT $DATESTR\"}" "$f"
             else
-              perl -0777 -pi -e "s{cat <<EOF}{cat <<EOF\n#undef UTS_VERSION\n#define UTS_VERSION \"#1 SMP PREEMPT $DATESTR\" } unless /UTS_VERSION/" "$f"
+              echo "应用 6.x mkcompile_h 补丁: $f"
+              if grep -q 'UTS_VERSION=' "$f"; then
+                perl -pi -e "s{UTS_VERSION=\"\\\$\\\(.*?\\\)\"}{UTS_VERSION=\"#1 SMP PREEMPT $DATESTR\"}" "$f"
+              else
+                perl -0777 -pi -e "s{cat <<EOF}{cat <<EOF\n#undef UTS_VERSION\n#define UTS_VERSION \"#1 SMP PREEMPT $DATESTR\" } unless /UTS_VERSION/" "$f"
+              fi
             fi
-          else
-            echo "未找到目标文件，跳过: $f"
           fi
 
       - name: 编译内核
@@ -919,6 +994,7 @@ jobs:
 
             if [ -f "build/build.sh" ]; then
               LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
+              strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
             else
               # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
               FRAG="common/arch/arm64/configs/ksu.fragment"
@@ -1063,7 +1139,7 @@ jobs:
           fi
 
       - name: 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}
           path: |
@@ -1073,7 +1149,7 @@ jobs:
 
       - name: 上传补丁冲突文件
         if: always() && env.REJ_COUNT > 0
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}-Rejects
           path: patch-rejects/
