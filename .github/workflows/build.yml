@@ -362,13 +362,13 @@ jobs:
                 case "$variant_input" in
                   "Next") ;;
                   "SukiSU") BRANCH="-s builtin" ;;
-                  "Official"|"MKSU") BRANCH="-s main" ;;
+                  "Official") BRANCH="-s main" ;;
                   *) BRANCH="-" ;;
                 esac
                 ;;
               "Dev(开发)")
                 case "$variant_input" in
-                  "Official"|"MKSU") BRANCH="-s main" ;;
+                  "Official") BRANCH="-s main" ;;
                   "Next") ;;
                   "SukiSU") BRANCH="-s builtin" ;;
                   *) echo "未知变体: $variant_input" >&2; exit 1 ;;
@@ -423,20 +423,6 @@ jobs:
             "Next")
               echo "添加 KernelSU-Next..."
               curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/refs/heads/dev/kernel/setup.sh" | bash -s dev_susfs
-              ;;
-            "MKSU")
-              echo "添加 MKSU..."
-              curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
-
-              cd KernelSU
-              KSU_GIT_VERSION=$(git rev-list --count HEAD)
-              KSU_VERSION=$((20000 + KSU_GIT_VERSION))
-              echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
-
-              if [ -f "kernel/Kbuild" ]; then
-                sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
-              fi
-              cd ..
               ;;
             "SukiSU")
               echo "添加 SukiSU..."
@@ -529,7 +515,7 @@ jobs:
           cp $SUSFS4KSU/kernel_patches/include/linux/* ./common/include/linux/
 
           case "${{ inputs.ksu_variant }}" in
-            "Official"|"MKSU")
+            "Official")
               cd ./KernelSU
               cp $SUSFS4KSU/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
               # 兼容旧版补丁：仅当补丁仍只修改 kernel/Makefile 时，才替换为 kernel/Kbuild
@@ -538,38 +524,6 @@ jobs:
                 sed -i 's|kernel/Makefile|kernel/Kbuild|g' ./10_enable_susfs_for_ksu.patch
               fi
               patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-
-              # 仅 MKSU: 修复 SUSFS 补丁与最新 KernelSU 代码重构不兼容导致的 include 路径问题
-              # MKSU 的 setup.sh clone 的是 tiann/KernelSU（新版子目录结构），
-              # 但补丁中的 .c/.h 修改 hunks 因上下文已变化而静默失败，需要手动修复
-              if [ "${{ inputs.ksu_variant }}" == "MKSU" ]; then
-                KBUILD_FILE="kernel/Kbuild"
-                KSU_KERNEL_DIR="kernel"
-
-                # 确保 Kbuild 有正确的 include 搜索路径
-                if [ -f "$KBUILD_FILE" ] && ! grep -qF '-I$(src)/include' "$KBUILD_FILE"; then
-                  sed -i '/ccflags-y += -I$(srctree)\/security\/selinux/a ccflags-y += -I$(src) -I$(src)/include' "$KBUILD_FILE"
-                  echo "已添加 -I\$(src)/include 到 Kbuild"
-                fi
-
-                # 修复 feature/ 和 core/ 下源文件中未被补丁更新的 include 路径
-                find "$KSU_KERNEL_DIR" \( -name '*.c' -o -name '*.h' \) | while read -r f; do
-                  if echo "$f" | grep -qv '/include/'; then
-                    if grep -q '#include "klog.h"' "$f"; then
-                      sed -i 's|#include "klog.h"|#include "include/klog.h"|g' "$f"
-                      echo "修复 include 路径: $f (klog.h)"
-                    fi
-                    if grep -q '#include "ksu.h"' "$f"; then
-                      sed -i 's|#include "ksu.h"|#include "include/ksu.h"|g' "$f"
-                      echo "修复 include 路径: $f (ksu.h)"
-                    fi
-                    if grep -q '#include "arch.h"' "$f"; then
-                      sed -i 's|#include "arch.h"|#include "include/arch.h"|g' "$f"
-                      echo "修复 include 路径: $f (arch.h)"
-                    fi
-                  fi
-                done
-              fi
 
               cd ..
               ;;
@@ -581,7 +535,7 @@ jobs:
           cd $KERNEL_ROOT/common
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
 
-          if [ "${{ inputs.ksu_variant }}" == "Official" ] || [ "${{ inputs.ksu_variant }}" == "MKSU" ] || [ "${{ inputs.ksu_variant }}" == "Next" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ]; then
+          if [ "${{ inputs.ksu_variant }}" == "Official" ] || [ "${{ inputs.ksu_variant }}" == "Next" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ]; then
             CURRENT_SUB="${{ inputs.sub_level }}"
             if [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]]; then
               CURRENT_SUB=99999
@@ -631,11 +585,12 @@ jobs:
                 cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./
                 patch -p1 < base.c.patch || true
               fi
-              if ! grep -qF '#include <linux/dma-buf.h>' ./fs/proc/base.c; then
-                sed -i '/#include <linux\/cpufreq_times.h>/a #include <linux\/dma-buf.h>' ./fs/proc/base.c
-              fi
-              if grep -q 'susfs_is_current_proc_umounted' ./fs/proc/base.c && ! grep -qF '#include <linux/susfs.h>' ./fs/proc/base.c; then
-                sed -i '/#include <linux\/dma-buf.h>/a #include <linux\/susfs.h>' ./fs/proc/base.c
+              if grep -q 'susfs_is_current_proc_umounted\|SUSFS_IS_INODE_SUS_MAP\|SUSFS_IS_INODE_OPEN_REDIRECT' ./fs/proc/base.c && ! grep -qF '#include <linux/susfs_def.h>' ./fs/proc/base.c; then
+                if grep -qF '#include <linux/dma-buf.h>' ./fs/proc/base.c; then
+                  sed -i '/#include <linux\/dma-buf.h>/a #if defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)\n#include <linux\/susfs_def.h>\n#endif' ./fs/proc/base.c
+                else
+                  sed -i '/#include <linux\/cpufreq_times.h>/a #if defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)\n#include <linux\/susfs_def.h>\n#endif' ./fs/proc/base.c
+                fi
               fi
               if [[ "$CURRENT_SUB" -le 75 && "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
                 sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
@@ -646,7 +601,7 @@ jobs:
                 echo "检测到 namespace.c 缺少 susfs_def.h，注入声明..."
                 sed -i '/#include <linux\/mnt_idmapping.h>/a #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\n#include <linux\/susfs_def.h>\n#endif' ./fs/namespace.c
                 if ! grep -q 'extern bool susfs_is_current_ksu_domain' ./fs/namespace.c; then
-                  sed -i '/#include "internal.h"/a \\n#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\nextern bool susfs_is_current_ksu_domain(void);\nextern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\n\n#define CL_COPY_MNT_NS BIT(25)\n\nstatic DEFINE_IDA(susfs_mnt_id_ida);\nstatic DEFINE_IDA(susfs_mnt_group_ida);\n\n#endif' ./fs/namespace.c
+                  sed -i '/#include "internal.h"/a \\n#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\nextern bool susfs_is_current_ksu_domain(void);\nextern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\n\n#define CL_COPY_MNT_NS BIT(25)\n\n#endif' ./fs/namespace.c
                 fi
               fi
             fi
@@ -657,21 +612,14 @@ jobs:
                 cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/base.c.patch ./
                 patch -p1 < base.c.patch || true
               fi
-              # 修复 6.6.50~6.6.97: 缺少 susfs_def.h 导致编译报 undeclared identifier
-              if grep -q 'AS_FLAGS_SUS_MAP\|susfs_is_current_proc_umounted' ./fs/proc/base.c && ! grep -qF 'susfs_def.h' ./fs/proc/base.c; then
+              # 修复 6.6.50~6.6.97: fs/proc/base.c 头部 hunk 失配，导致 susfs_def.h 漏打
+              if grep -q 'AS_FLAGS_SUS_MAP\|susfs_is_current_proc_umounted\|SUSFS_IS_INODE_SUS_MAP\|SUSFS_IS_INODE_OPEN_REDIRECT' ./fs/proc/base.c && ! grep -qF 'susfs_def.h' ./fs/proc/base.c; then
                 if ! grep -qF '#include <linux/dma-buf.h>' ./fs/proc/base.c; then
                   sed -i '/#include <linux\/cpufreq_times.h>/a #include <linux\/dma-buf.h>' ./fs/proc/base.c
                 fi
                 sed -i '/#include <linux\/dma-buf.h>/a #endif' ./fs/proc/base.c
                 sed -i '/#include <linux\/dma-buf.h>/a #include <linux\/susfs_def.h>' ./fs/proc/base.c
-                sed -i '/#include <linux\/dma-buf.h>/a #ifdef CONFIG_KSU_SUSFS_SUS_MAP' ./fs/proc/base.c
-              fi
-              # 修复 ReSukiSU: 缺少 susfs.h 导致编译报 undeclared identifier
-              if grep -q 'SUSFS_IS_INODE_SUS_MAP\|SUSFS_IS_INODE_OPEN_REDIRECT' ./fs/proc/base.c && ! grep -qF '#include <linux/susfs.h>' ./fs/proc/base.c; then
-                if ! grep -qF '#include <linux/dma-buf.h>' ./fs/proc/base.c; then
-                  sed -i '/#include <linux\/cpufreq_times.h>/a #include <linux\/dma-buf.h>' ./fs/proc/base.c
-                fi
-                sed -i '/#include <linux\/dma-buf.h>/a #include <linux\/susfs.h>' ./fs/proc/base.c
+                sed -i '/#include <linux\/dma-buf.h>/a #if defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)' ./fs/proc/base.c
               fi
               if [[ "$CURRENT_SUB" -le 58 ]]; then
                 cp $KERNEL_PATCHES/wild/susfs_fix_patches/v${SUSFS_VERSION}/a15-6.6/task_mmu.c.patch ./

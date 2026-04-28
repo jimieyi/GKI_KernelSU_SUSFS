@@ -54,7 +54,6 @@ on:
         options:
           - Official
           #- Next
-          - MKSU
           - SukiSU
           - ReSukiSU
         default: ReSukiSU

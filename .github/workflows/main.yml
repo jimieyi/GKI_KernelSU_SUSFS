@@ -41,7 +41,6 @@ on:
           - ReSukiSU
           - Official
           #- Next
-          - MKSU
         default: ReSukiSU
       kernelsu_branch:
         description: "KSU 分支"
@@ -275,7 +274,6 @@ jobs:
           case "${{ inputs.kernelsu_variant }}" in
             "Next")      KSU_NAME="KernelSU-Next" ;;
             "Official")  KSU_NAME="KernelSU" ;;
-            "MKSU")      KSU_NAME="MKSU" ;;
             "SukiSU")    KSU_NAME="SukiSU" ;;
             "ReSukiSU")  KSU_NAME="ReSukiSU" ;;
           esac
@@ -345,10 +343,10 @@ jobs:
       # ==================== 确定 KSU 分支 ====================
       # 根据用户选择确定实际的 Git 分支
       - name: 确定 KSU 分支
-        if: inputs.kernelsu_branch == 'Dev(开发)' || inputs.kernelsu_variant == 'MKSU' || inputs.kernelsu_variant == 'SukiSU' || inputs.kernelsu_variant == 'ReSukiSU'
+        if: inputs.kernelsu_branch == 'Dev(开发)' || inputs.kernelsu_variant == 'SukiSU' || inputs.kernelsu_variant == 'ReSukiSU'
         run: |
           case "${{ inputs.kernelsu_variant }}" in
-            "Official"|"MKSU") BRANCH="main" ;;
+            "Official") BRANCH="main" ;;
             "SukiSU"|"ReSukiSU") BRANCH="main" ;;
             "Next") BRANCH="dev" ;;
             *) echo "错误: 未知变体" >&2; exit 1 ;;
@@ -362,12 +360,11 @@ jobs:
           case "${{ inputs.kernelsu_variant }}" in
             "Official") REPO_URL="https://github.com/tiann/KernelSU.git"; REPO_URL2="tiann/KernelSU" ;;
             "Next") REPO_URL="https://github.com/KernelSU-Next/KernelSU-Next.git"; REPO_URL2="KernelSU-Next/KernelSU-Next" ;;
-            "MKSU") REPO_URL="https://github.com/5ec1cff/KernelSU.git"; REPO_URL2="5ec1cff/KernelSU" ;;
             "SukiSU") REPO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra.git"; REPO_URL2="SukiSU-Ultra/SukiSU-Ultra" ;;
             "ReSukiSU") REPO_URL="https://github.com/ReSukiSU/ReSukiSU.git"; REPO_URL2="ReSukiSU/ReSukiSU" ;;
           esac
 
-          if [[ "${{ inputs.kernelsu_branch }}" == "Stable(标准)" && "${{ inputs.kernelsu_variant }}" != "MKSU" ]]; then
+          if [[ "${{ inputs.kernelsu_branch }}" == "Stable(标准)" ]]; then
             TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
             KSU_REF=$TAG
             KSU_URL="https://github.com/$REPO_URL2/releases/tag/$TAG"
